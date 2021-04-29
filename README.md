@@ -6,3 +6,5 @@ A VC:MP RP/Freeroam server.
 - Bank System
 - Ammu-Nation
 - Auto-Login
+- INI Account System
+- Strongest Anti-Cheat
