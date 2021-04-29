@@ -135,6 +135,7 @@ function PlayerAuthorized(player)
 	local armour = ReadIniNumber("accounts/"+player.Name+".ini","account","armour");
 	local money = ReadIniInteger("accounts/"+player.Name+".ini","account","money");
 	local died = ReadIniBool("accounts/"+player.Name+".ini","account","just_died");
+	local skin = ReadIniInteger("accounts/"+player.Name+".ini","account","skin");
 
 	if ( x != 0 && y != 0 && z != 0 )
 	{
@@ -145,6 +146,7 @@ function PlayerAuthorized(player)
 
 	player.Cash = money;
 	player.Armour = armour;
+	player.Skin = skin;
 
 	if ( died ) player.Health = 0;
 }
@@ -193,6 +195,7 @@ function onPlayerCommand(player,cmd,text)
 		case "help":
 
 			MessagePlayer("[#ffffff]Account commands: /register, /login, /autologin",player);
+			MessagePlayer("[#ffffff]Playeer commands: /skin",player);
 			MessagePlayer("[#ffffff]Bank commands: /deposit, /withdraw, /balance",player);
 			MessagePlayer("[#ffffff]Ammu-Nation commands: /buy, /pricelist",player);
 
@@ -214,6 +217,33 @@ function onPlayerCommand(player,cmd,text)
 
 		break;
 		
+		case "skin":
+
+			if ( logged[player.ID] )
+			{ // 0 - 186
+				if ( text )
+				{
+					if ( player.Health != 0 )
+					{
+						if ( IsNum(text) )
+						{
+							local skin = text.tointeger();
+							if ( skin >= 0 && skin <= 186 )
+							{
+								player.Skin = skin;
+							}
+							else MessagePlayer("[#ff0000]Invalid Skin ID. /skin < 0 - 186 >",player);
+						}
+						else MessagePlayer("[#ff0000]Invalid Skin ID. /skin < 0 - 186 >",player);
+					}
+					else MessagePlayer("[#ff0000]You need to be alive to change your skin",player);
+				}
+				else MessagePlayer("[#ff0000]Incorrect Format. Usage: /skin < 0 - 186 >",player);
+			}
+			else MessagePlayer("[#ff0000]You must be logged in to use this command",player);
+
+		break;
+
 		case "buy":
 
 			if ( player_sphere[player.ID] == 1 )
