@@ -24,9 +24,15 @@ function onCheckpointExited ( player, sphere )
 function onCheckpointEntered ( player, sphere )
 {
 	player_sphere[player.ID] = sphere.ID;
-	if ( sphere.ID == 0 )
+	switch ( sphere.ID )
 	{
-		MessagePlayer("[#ffff00]You can view bank commands by typing /bankhelp",player);
+		case 0:
+			MessagePlayer("[#ffff00]You can view bank commands by typing /help",player);
+		break;
+
+		case 1:
+			MessagePlayer("[#ffff00]You can view ammu-nation commands by typing /help",player);
+		break;
 	}
 }
 
@@ -36,6 +42,8 @@ function onScriptLoad()
 	SetKillDelay(9999999);
 	CreateSphere(Vector(-906.728, -341.084, 13.3802),2.0,ARGB(100,0,255,0));
 	CreateMarker(1, Vector(-906.728, -341.084, 13.3802), 1, RGBA(0,0,0,0), 24);
+	CreateSphere(Vector(-676.757, 1204.6, 11.1091),2.0,ARGB(100,180,180,180));
+	CreateMarker(1,Vector(-676.757, 1204.6, 11.1091),1,RGBA(0,0,0,0),16);
 }
 
 function GetClosestHospital(pos)
@@ -182,25 +190,119 @@ function onPlayerCommand(player,cmd,text)
 
 		break;
 
-		case "guns":
-
-			player.GiveWeapon(26,9999);
-			player.GiveWeapon(25,9999);
-			player.GiveWeapon(21,9999);
-			player.GiveWeapon(17,9999);
-			player.GiveWeapon(29,9999);
-
-		break;
-
 		case "help":
 
-			MessagePlayer("[#ffffff]General commands: /register, /login, /autologin, /bankhelp",player);
+			MessagePlayer("[#ffffff]Account commands: /register, /login, /autologin",player);
+			MessagePlayer("[#ffffff]Bank commands: /deposit, /withdraw, /balance",player);
+			MessagePlayer("[#ffffff]Ammu-Nation commands: /buy, /pricelist",player);
 
 		break;
 
-		case "bankhelp":
+		case "pricelist":
 
-			MessagePlayer("[#ffffff]Bank commands: /deposit, /withdraw, /balance",player);
+			if ( player_sphere[player.ID] == 1 )
+			{
+				MessagePlayer("[#ff8000]Ammu-Nation items:",player);
+				MessagePlayer("[#ff4000][ID 1] Body Armour ($800)",player);
+				MessagePlayer("[#ff4000][ID 2] Colt-45 ($250/17clips)",player);
+				MessagePlayer("[#ff4000][ID 3] Ingram MAC ($600/30clips)",player);
+				MessagePlayer("[#ff4000][ID 4] Stubby Shotgun ($800/10clips)",player);
+				MessagePlayer("[#ff4000][ID 5] M4 ($1500/60clips)",player);
+				
+			}
+			else MessagePlayer("[#ff0000]You must be at Ammu-Nation to use this command",player);
+
+		break;
+		
+		case "buy":
+
+			if ( player_sphere[player.ID] == 1 )
+			{
+				if ( text )
+				{
+					if ( IsNum(text) )
+					{
+
+						local item = text.tointeger();
+
+						switch ( item )
+						{
+							case 1:
+
+								if ( player.Armour < 100 )
+								{
+									if ( player.Cash >= 800 )
+									{
+										player.Cash -= 800;
+										player.Armour = 100;
+										MessagePlayer("[#ffff00]You have purchased body armour for $800",player);
+									}
+									else MessagePlayer("[#ff0000]You can't buy this item, it costs $800, you have $"+player.Cash,player);
+								}
+								else MessagePlayer("[#ff0000]Your armour is full!",player);
+
+							break;
+
+							case 2:
+
+								if ( player.Cash >= 250 )
+								{
+									player.GiveWeapon(17,17);
+									player.Cash -= 250;
+									MessagePlayer("[#ffff00]You have purchased 17x Colt-45 for $250",player);
+								}
+								else MessagePlayer("[#ff0000]You can't buy this item, it costs $250, you have $"+player.Cash,player);
+
+							break;
+
+							case 3:
+
+								if ( player.Cash >= 600 )
+								{
+									player.GiveWeapon(24,30);
+									player.Cash -= 600;
+									MessagePlayer("[#ffff00]You have purchased 30x Ingram MAC for $600",player);
+								}
+								else MessagePlayer("[#ff0000]You can't buy this item, it costs $600, you have $"+player.Cash,player);
+
+							break;
+
+							case 4:
+
+								if ( player.Cash >= 800 )
+								{
+									player.GiveWeapon(21,10);
+									player.Cash -= 800;
+									MessagePlayer("[#ffff00]You have purchased 10x Stubby Shotgun for $800",player);
+								}
+								else MessagePlayer("[#ff0000]You can't buy this item, it costs $800, you have $"+player.Cash,player);
+
+							break;
+
+							case 5:
+
+								if ( player.Cash >= 1500 )
+								{
+									player.GiveWeapon(26,60);
+									player.Cash -= 1500;
+									MessagePlayer("[#ffff00]You have purchased 60x M4 for $1500",player);
+								}
+								else MessagePlayer("[#ff0000]You can't buy this item, it costs $1500, you have $"+player.Cash,player);
+
+							break;
+							
+							default:
+
+								MessagePlayer("[#ff0000]Invalid item ID, check items at /pricelist",player);
+
+							break;
+						}
+					}
+					else MessagePlayer("[#ff0000]You need to specify item ID to buy, write /pricelist",player);
+				}
+				else MessagePlayer("[#ff0000]You need to specify item ID to buy, write /pricelist",player);
+			}
+			else MessagePlayer("[#ff0000]You must be at Ammu-Nation to use this command",player);
 
 		break;
 
@@ -352,6 +454,8 @@ function onPlayerCommand(player,cmd,text)
 						{
 							PlayerAuthorized(player);
 							MessagePlayer("[#00ff00]You have been logged in!",player);
+							local last_j = ReadIniString("accounts/"+player.Name+".ini","account","last_join");
+							MessagePlayer("[#00ff00]Your last session was on "+last_j,player);
 						}
 						else MessagePlayer("[#ff0000]Invalid password",player);
 					}
@@ -436,7 +540,9 @@ function onPlayerSpawn( player )
 			if ( ip == player.IP )
 			{
 				PlayerAuthorized(player);
+				local last_j = ReadIniString("accounts/"+player.Name+".ini","account","last_join");
 				MessagePlayer("[#00ff00]You have been automatically logged in",player);
+				MessagePlayer("[#00ff00]You were last active on the server on "+last_j,player);
 			}
 			else
 			{
@@ -472,7 +578,8 @@ function onPlayerChat( player, text )
 		MessagePlayer("[#ff0000]You must be logged in to chat",player);
 		return 0;
 	}
-	else {
+	else
+	{
 		Message("[#ffffff]"+player.Name+" [#808080][ALL] [#ffffff]"+text);
 	}
 	return 0;
@@ -485,5 +592,6 @@ function onPlayerCrashDump( player, crash )
 
 function onPlayerGameKeysChange( player, oldKeys, newKeys )
 {
+	player.Score = player.Cash;
 	player.RequestModuleList();
 }
