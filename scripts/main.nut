@@ -9,11 +9,33 @@ player_modules <- array(100,null);
 logged <- array(128,null);
 just_died <- array(128,null);
 last_death_pos <- array(128,null);
+player_sphere <- array(128,null);
+
+function CreateSphere(pos,size,colour)
+{
+	CreateCheckpoint(null,1,true,pos,colour,size);
+}
+
+function onCheckpointExited ( player, sphere )
+{
+	player_sphere[player.ID] = -1;
+}
+
+function onCheckpointEntered ( player, sphere )
+{
+	player_sphere[player.ID] = sphere.ID;
+	if ( sphere.ID == 0 )
+	{
+		MessagePlayer("[#ffff00]You can view bank commands by typing /bankhelp",player);
+	}
+}
 
 function onScriptLoad()
 {
 	NewTimer("onServerTick",60000,0);
 	SetKillDelay(9999999);
+	CreateSphere(Vector(-906.728, -341.084, 13.3802),2.0,ARGB(100,0,255,0));
+	CreateMarker(1, Vector(-906.728, -341.084, 13.3802), 1, RGBA(0,0,0,0), 24);
 }
 
 function GetClosestHospital(pos)
@@ -121,7 +143,7 @@ function PlayerAuthorized(player)
 
 function SaveAccount(player)
 {
-	if ( logged[player.ID] )
+	if ( logged[player.ID] ) 
 	{
 		WriteIniNumber("accounts/"+player.Name+".ini","account","pos_x",player.Pos.x);
 		WriteIniNumber("accounts/"+player.Name+".ini","account","pos_y",player.Pos.y);
@@ -134,7 +156,7 @@ function SaveAccount(player)
 		WriteIniString("accounts/"+player.Name+".ini","account","uid",player.UID);
 		WriteIniString("accounts/"+player.Name+".ini","account","uid2",player.UID2);
 		WriteIniBool("accounts/"+player.Name+".ini","account","just_died",just_died[player.ID]);
-		WriteIniInteger("accounts/"+player.Name+".ini","account","last_join",date().year);
+		WriteIniString("accounts/"+player.Name+".ini","account","last_join",date().day+"/"+date().month+"/"+date().year+", "+date().hour+":"+date().min);
 	}
 }
 
@@ -172,7 +194,104 @@ function onPlayerCommand(player,cmd,text)
 
 		case "help":
 
-			MessagePlayer("[#ffffff]Commands: /register, /login, /autologin",player);
+			MessagePlayer("[#ffffff]General commands: /register, /login, /autologin, /bankhelp",player);
+
+		break;
+
+		case "bankhelp":
+
+			MessagePlayer("[#ffffff]Bank commands: /deposit, /withdraw, /balance",player);
+
+		break;
+
+		case "deposit":
+
+			if ( player_sphere[player.ID] == 0 )
+			{
+				if ( logged[player.ID] )
+				{
+					if ( player.Cash != 0 )
+					{
+						if ( text )
+						{
+							if ( IsNum(text) )
+							{
+								local amount = text.tointeger();
+								if ( amount )
+								{
+									if ( amount >= 1 )
+									{
+										if ( amount <= player.Cash )
+										{
+											local bank = ReadIniInteger("accounts/"+player.Name+".ini","account","bank_money");
+												player.Cash -= amount;
+											WriteIniInteger("accounts/"+player.Name+".ini","account","bank_money",bank+amount);
+											MessagePlayer("[#ff8000]You have deposited $"+amount+" to your bank account",player);
+										}
+										else MessagePlayer("[#ff0000]You dont have enough money to deposit",player);
+									}
+									else MessagePlayer("[#ff0000]You must deposit atleast $1",player);
+								}
+								else MessagePlayer("[#ff0000]You need to specify an amount to deposit",player);
+							}
+							else MessagePlayer("[#ff0000]Amount must be in numbers",player);
+						}
+						else MessagePlayer("[#ff0000]You need to specify an amount to deposit",player);
+					}
+					else MessagePlayer("[#ff0000]You don't have any money to deposit.",player);
+				}
+				else MessagePlayer("[#ff0000]You must be logged in to use this command.",player);
+			}
+			else MessagePlayer("[#ff0000]You must be in bank to deposit money.",player);
+
+		break;
+
+		case "balance":
+
+			if ( player_sphere[player.ID] == 0 )
+			{
+				local bank = ReadIniInteger("accounts/"+player.Name+".ini","account","bank_money");
+				MessagePlayer("[#ffff00]Your bank balance is $"+bank,player);
+			}
+			else MessagePlayer("[#ff0000]You must be in bank to view your balance",player);
+
+		break;
+
+		case "withdraw":
+
+			if ( player_sphere[player.ID] == 0 )
+			{
+				if ( logged[player.ID] )
+				{
+					if ( text )
+					{
+						if ( IsNum(text) )
+						{
+							local amount = text.tointeger();
+							if ( amount )
+							{
+								if ( amount >= 1 )
+								{
+									local bank = ReadIniInteger("accounts/"+player.Name+".ini","account","bank_money");
+									if ( amount <= bank )
+									{
+										player.Cash += amount;
+										WriteIniInteger("accounts/"+player.Name+".ini","account","bank_money",bank-amount);
+										MessagePlayer("[#ff8000]You have withdrawn $"+amount+" from your bank account",player);
+									}
+									else MessagePlayer("[#ff0000]You dont have enough money in bank to withdraw",player);
+								}
+								else MessagePlayer("[#ff0000]You must withdraw atleast $1",player);
+							}
+							else MessagePlayer("[#ff0000]You need to specify an amount to withdraw",player);
+						}
+						else MessagePlayer("[#ff0000]Amount must be in numbers",player);
+					}
+					else MessagePlayer("[#ff0000]You need to specify an amount to deposit",player);
+				}
+				else MessagePlayer("[#ff0000]You must be logged in to use this command.",player);
+			}
+			else MessagePlayer("[#ff0000]You must be in bank to deposit money.",player);
 
 		break;
 
@@ -256,6 +375,7 @@ function onPlayerJoin( player )
 {
 	CheckPlayer(player);
 	player_modules[player.ID] = "";
+	player_sphere[player.ID] = -1;
 	just_died[player.ID] = false;
 	player.RequestModuleList();
 }
