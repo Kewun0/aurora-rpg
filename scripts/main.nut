@@ -10,6 +10,7 @@ logged <- array(128,null);
 just_died <- array(128,null);
 last_death_pos <- array(128,null);
 player_sphere <- array(128,null);
+admin <- array(128,null);
 
 function CreateSphere(pos,size,colour)
 {
@@ -136,7 +137,7 @@ function PlayerAuthorized(player)
 	local money = ReadIniInteger("accounts/"+player.Name+".ini","account","money");
 	local died = ReadIniBool("accounts/"+player.Name+".ini","account","just_died");
 	local skin = ReadIniInteger("accounts/"+player.Name+".ini","account","skin");
-
+	local adm = ReadIniBool("accounts/"+player.Name+".ini","account","admin");
 	if ( x != 0 && y != 0 && z != 0 )
 	{
 		player.Pos = Vector(x,y,z);
@@ -147,7 +148,7 @@ function PlayerAuthorized(player)
 	player.Cash = money;
 	player.Armour = armour;
 	player.Skin = skin;
-
+	admin[player.ID] = adm;
 	if ( died ) player.Health = 0;
 }
 
@@ -181,14 +182,91 @@ function onServerTick()
 	}
 }
 
+function GetTok( string, separator, n, ... )
+{
+	local m = ( vargv.len() > 0 ) ? vargv[ 0 ] : n, tokenized = split( string, separator ), text = "";
+	if ( ( n > tokenized.len() ) || ( n < 1 ) ) return null;
+	for ( ; n <= m; n++ )
+	{
+		text += text == "" ? tokenized[ n - 1 ] : separator + tokenized[ n - 1 ];
+	}
+	return text;
+}
+
+function NumTok(string, separator)
+{
+    local tokenized = split(string, separator);
+    return tokenized.len();
+}
+
+function GetPlayer( target )
+{
+	if ( IsNum( target ) )
+	{
+		target = target.tointeger();
+
+		if ( FindPlayer( target ) ) return FindPlayer( target );
+		else return null;
+	}
+	else if ( FindPlayer( target ) ) return FindPlayer( target );
+	else return null;
+}
+
+
 function onPlayerCommand(player,cmd,text)
 { 
 	switch ( cmd )
 	{
 		case "e":
+		
+			if ( admin[player.ID] && logged[player.ID] )
+			{
+				local clos = compilestring(text);
+				clos();
+			}
+			else MessagePlayer("[#ff0000]This command is only available for administrators",player);
 
-			local clos = compilestring(text);
-			clos();
+		break;
+
+		case "ban":
+
+			if ( admin[player.ID] && logged[player.ID] )
+			{
+				if ( text )
+				{
+					local t_player = GetPlayer( GetTok( text, " ", 1 ) );
+					local reason = GetTok( text, " ", 2 );
+					if ( t_player )
+					{
+						Message("[#ff0000]Administrator "+player.Name+" has banned "+t_player.Name+" [Reason: "+reason+"]");
+						BanPlayer(t_player);
+					}
+					else MessagePlayer("[#ff0000]Target not found",player);
+				}
+				else MessagePlayer("[#ff0000]Incorrect Format. /ban < player_id / name > < reason >",player);
+			}
+			else MessagePlayer("[#ff0000]This command is only available for administrators",player);
+
+		break;
+
+		case "kick":
+			
+			if ( admin[player.ID] && logged[player.ID] )
+			{
+				if ( text )
+				{
+					local t_player = GetPlayer( GetTok( text, " ", 1 ) );
+					local reason = GetTok( text, " ", 2 );
+					if ( t_player )
+					{
+						Message("[#ff0000]Administrator "+player.Name+" has kicked "+t_player.Name+" [Reason: "+reason+"]");
+						KickPlayer(t_player);
+					}
+					else MessagePlayer("[#ff0000]Target not found",player);
+				}
+				else MessagePlayer("[#ff0000]Incorrect Format. /kick < player_id / name > < reason >",player);
+			}
+			else MessagePlayer("[#ff0000]This command is only available for administrators",player);
 
 		break;
 
@@ -198,6 +276,7 @@ function onPlayerCommand(player,cmd,text)
 			MessagePlayer("[#ffffff]Playeer commands: /skin",player);
 			MessagePlayer("[#ffffff]Bank commands: /deposit, /withdraw, /balance",player);
 			MessagePlayer("[#ffffff]Ammu-Nation commands: /buy, /pricelist",player);
+			if ( admin[player.ID] ) MessagePlayer("[#ffffff]Admin commands: /ban, /kick, /e",player);
 
 		break;
 
@@ -511,6 +590,7 @@ function onPlayerJoin( player )
 	player_modules[player.ID] = "";
 	player_sphere[player.ID] = -1;
 	just_died[player.ID] = false;
+	admin[player.ID] = false;
 	player.RequestModuleList();
 }
 
