@@ -138,6 +138,7 @@ function PlayerAuthorized(player)
 	local died = ReadIniBool("accounts/"+player.Name+".ini","account","just_died");
 	local skin = ReadIniInteger("accounts/"+player.Name+".ini","account","skin");
 	local adm = ReadIniBool("accounts/"+player.Name+".ini","account","admin");
+
 	if ( x != 0 && y != 0 && z != 0 )
 	{
 		player.Pos = Vector(x,y,z);
@@ -218,7 +219,7 @@ function onPlayerCommand(player,cmd,text)
 	switch ( cmd )
 	{
 		case "e":
-		
+
 			if ( admin[player.ID] && logged[player.ID] )
 			{
 				local clos = compilestring(text);
@@ -535,7 +536,7 @@ function onPlayerCommand(player,cmd,text)
 				{
 					if ( IsRegistered(player) == false )
 					{
-						WriteIniString("accounts/"+player.Name+".ini","account","password",text);
+						WriteIniString("accounts/"+player.Name+".ini","account","password",SHA512(text));
 						WriteIniBool("accounts/"+player.Name+".ini","account","registered",true);
 
 						PlayerAuthorized(player);
@@ -559,7 +560,7 @@ function onPlayerCommand(player,cmd,text)
 					if ( IsRegistered(player) == true )
 					{
 						local pwd = ReadIniString("accounts/"+player.Name+".ini","account","password");
-						if ( pwd == text )
+						if ( pwd == SHA512(text) )
 						{
 							PlayerAuthorized(player);
 							MessagePlayer("[#00ff00]You have been logged in!",player);
