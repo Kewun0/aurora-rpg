@@ -138,6 +138,35 @@ function PlayerAuthorized(player)
 	local died = ReadIniBool("accounts/"+player.Name+".ini","account","just_died");
 	local skin = ReadIniInteger("accounts/"+player.Name+".ini","account","skin");
 	local adm = ReadIniBool("accounts/"+player.Name+".ini","account","admin");
+	local wan = ReadIniInteger("accounts/"+player.Name+".ini","account","wanted");
+
+	local wep_slot0 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon0");
+	local wep_slot1 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon1");
+	local wep_slot2 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon2");
+	local wep_slot3 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon3");
+	local wep_slot4 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon4");
+	local wep_slot5 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon5");
+	local wep_slot6 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon6");
+	local wep_slot7 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon7");
+	local wep_slot8 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon8");
+	local ammo1 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon1_ammo");
+	local ammo2 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon2_ammo");
+	local ammo3 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon3_ammo");
+	local ammo4 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon4_ammo");
+	local ammo5 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon5_ammo");
+	local ammo6 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon6_ammo");
+	local ammo7 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon7_ammo");
+	local ammo8 = ReadIniInteger("accounts/"+player.Name+".ini","account","weapon8_ammo");
+	
+	player.GiveWeapon(wep_slot0, 1);
+	player.GiveWeapon(wep_slot1, ammo1);
+	player.GiveWeapon(wep_slot2, ammo2);
+	player.GiveWeapon(wep_slot3, ammo3);
+	player.GiveWeapon(wep_slot4, ammo4);
+	player.GiveWeapon(wep_slot5, ammo5);
+	player.GiveWeapon(wep_slot6, ammo6);
+	player.GiveWeapon(wep_slot7, ammo7);
+	player.GiveWeapon(wep_slot8, ammo8);
 
 	if ( x != 0 && y != 0 && z != 0 )
 	{
@@ -146,10 +175,12 @@ function PlayerAuthorized(player)
 
 	if ( health != 0 ) player.Health = health;
 
+	player.WantedLevel = wan;
 	player.Cash = money;
 	player.Armour = armour;
 	player.Skin = skin;
 	admin[player.ID] = adm;
+	
 	if ( died ) player.Health = 0;
 }
 
@@ -168,6 +199,17 @@ function SaveAccount(player)
 		WriteIniString("accounts/"+player.Name+".ini","account","uid",player.UID);
 		WriteIniString("accounts/"+player.Name+".ini","account","uid2",player.UID2);
 		WriteIniBool("accounts/"+player.Name+".ini","account","just_died",just_died[player.ID]);
+		
+		local WeaponID;
+		local Ammo;
+		for (local i = 0; i <= 8; i++)
+		{
+			WeaponID = player.GetWeaponAtSlot(i);
+			Ammo = player.GetAmmoAtSlot(i);
+			WriteIniInteger("accounts/"+player.Name+".ini","account","weapon"+i,WeaponID);
+			WriteIniInteger("accounts/"+player.Name+".ini","account","weapon"+i+"_ammo",Ammo);
+		}
+		
 		WriteIniString("accounts/"+player.Name+".ini","account","last_join",date().day+"/"+date().month+"/"+date().year+", "+date().hour+":"+date().min);
 	}
 }
@@ -212,7 +254,6 @@ function GetPlayer( target )
 	else if ( FindPlayer( target ) ) return FindPlayer( target );
 	else return null;
 }
-
 
 function onPlayerCommand(player,cmd,text)
 { 
@@ -300,7 +341,7 @@ function onPlayerCommand(player,cmd,text)
 		case "skin":
 
 			if ( logged[player.ID] )
-			{ // 0 - 186
+			{
 				if ( text )
 				{
 					if ( player.Health != 0 )
@@ -593,6 +634,19 @@ function onPlayerJoin( player )
 	just_died[player.ID] = false;
 	admin[player.ID] = false;
 	player.RequestModuleList();
+
+	for ( local i = 0; i <= 100; i++ )
+	{
+		local plr = FindPlayer(i);
+		if ( plr )
+		{
+			if ( plr.ID != player.ID && ( plr.UID == player.UID || plr.UID2 == player.UID2 ) )
+			{
+				MessagePlayer("[#4babff]Connection rejected: You are already connected to this server from another game instance.",player);
+				KickPlayer(player);
+			}
+		}
+	} 
 }
 
 function onPlayerDeath( player, reason )
@@ -680,7 +734,7 @@ function onPlayerKill( killer , player, reason, bodypart )
 	killer.WantedLevel += 1; 
 	just_died[player.ID] = true;
 	last_death_pos[player.ID] = player.Pos;
-} 
+}
 
 function onPlayerChat( player, text )
 {
