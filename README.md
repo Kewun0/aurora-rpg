@@ -8,3 +8,4 @@ A VC:MP RP/Freeroam server.
 - Auto-Login
 - INI Account System
 - Strongest Anti-Cheat
+- Admin System
