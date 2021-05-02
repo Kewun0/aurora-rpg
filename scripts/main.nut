@@ -11,6 +11,149 @@ just_died <- array(128,null);
 last_death_pos <- array(128,null);
 player_sphere <- array(128,null);
 admin <- array(128,null);
+sh_attempts <- array(128,null);
+pickups <- array(257, null);
+ignore_ac <- array(128,null);
+
+class Collectable
+{
+	Pointer = null;
+	Model = 0;
+	Pos = null;
+	Value = 0;
+	PickupID = 0;
+}
+
+function CreateCollectable(model,pos,value)
+{
+	local found = false;
+	local valid_index = -1;
+	for ( local i = 0; i <= 256; i++ )
+	{
+		if ( !found )
+		{
+			local col = FindCollectable(i);
+			if ( col == null )
+			{
+				valid_index = i;
+				found = true;
+			}
+		}
+	}
+	pickups[valid_index].Pointer = CreatePickup(model,pos);
+	pickups[valid_index].Value = value;
+	pickups[valid_index].Model = model;
+	pickups[valid_index].Pos = pos;
+	pickups[valid_index].PickupID = pickups[valid_index].Pointer.ID;
+}
+
+function FindCollectable(id)
+{
+	if ( pickups[id].Pointer != null )
+	{
+		return pickups[id];
+	}
+	else return null;
+}
+
+function RemoveCollectable(pointer)
+{
+	if ( pointer )
+	{
+		pointer.Model = 0;
+		pointer.Value = 0;
+		pointer.PickupID = -1;
+		pointer.Pointer.Remove();
+		pointer.Pointer = null;
+	}
+}
+
+function PickWeapon(player)
+{
+	if ( player.Health != 0 )
+	{
+		for ( local i = 0; i <= 256; i++ )
+		{
+			local pos = player.Pos;
+			local _pickup = FindCollectable(i);
+			if ( _pickup )
+			{
+				if ( _pickup.Pos.Distance(pos) <= 2.0 )
+				{
+					switch ( _pickup.Model )
+					{
+						case 274:
+
+							player.GiveWeapon(17,_pickup.Value);
+							RemoveCollectable(_pickup);
+							
+						break;
+
+						case 279:
+
+							player.GiveWeapon(21,_pickup.Value);
+							RemoveCollectable(_pickup);
+
+						break;
+
+						case 283:
+
+							player.GiveWeapon(24,_pickup.Value);
+							RemoveCollectable(_pickup);
+
+						break;
+
+						case 280:
+
+							player.GiveWeapon(26,_pickup.Value);
+							RemoveCollectable(_pickup);
+
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+function DropWeapon(player)
+{
+	if ( !player.Vehicle )
+	{
+		switch ( player.Weapon )
+		{
+			case 17:
+
+				CreateCollectable(274,player.Pos,player.Ammo);
+				player.RemoveWeapon(player.Weapon);
+
+			break;
+
+			case 21:
+
+				CreateCollectable(279,player.Pos,player.Ammo);
+				player.RemoveWeapon(player.Weapon);
+
+			break;
+
+			case 24:
+
+				CreateCollectable(283,player.Pos,player.Ammo);
+				player.RemoveWeapon(player.Weapon);
+
+			break;
+
+			case 26:
+
+				CreateCollectable(280,player.Pos,player.Ammo);
+				player.RemoveWeapon(player.Weapon);
+
+			break;
+
+
+		}
+	}
+}
 
 function CreateSphere(pos,size,colour)
 {
@@ -22,29 +165,114 @@ function onCheckpointExited ( player, sphere )
 	player_sphere[player.ID] = -1;
 }
 
+function onPickupPickedUp(player,pickup)
+{
+	for ( local i = 0; i <= 256; i++ )
+	{
+		local pk = FindCollectable(i);
+		if ( pk ) 
+		{
+			if ( pk.PickupID == pickup.ID )
+			{
+				switch ( pk.Model )
+				{
+					case 274:
+
+						Announce("COLT-45, "+pk.Value+" bullets. Press E to pickup",player,0);
+
+					break;
+
+					case 279:
+
+						Announce("STUBBY, "+pk.Value+" bullets. Press E to pickup",player,0);
+
+					break;
+
+					case 283:
+
+						Announce("INGRAM, "+pk.Value+" bullets. Press E to pickup",player,0);
+
+					break;
+
+					case 280:
+
+						Announce("M4, "+pk.Value+" bullets. Press E to pickup",player,0);
+
+					break;
+
+				}
+			}
+		}
+	}
+}
+
 function onCheckpointEntered ( player, sphere )
 {
 	player_sphere[player.ID] = sphere.ID;
 	switch ( sphere.ID )
 	{
 		case 0:
+
 			MessagePlayer("[#ffff00]You can view bank commands by typing /help",player);
+
 		break;
 
 		case 1:
+
 			MessagePlayer("[#ffff00]You can view ammu-nation commands by typing /help",player);
+
 		break;
 	}
+}
+
+function Log(path,text)
+{
+	local current_date = format("[%s:%s:%s %s/%s/%s]",date().hour+"",date().min+"",date().sec+"", date().month+"",date().day+"",date().year+"");
+	system("echo "+current_date+" "+text+" >> "+path);
 }
 
 function onScriptLoad()
 {
 	NewTimer("onServerTick",60000,0);
+	NewTimer("CooldownAnticheat",5000,0);
 	SetKillDelay(9999999);
+	SetGamespeed(0.9);
+	SetGravity(0.0085);
+	ActionKey <- BindKey(true,0x45,0,0);
+	DropKey <- BindKey(true,0x47,0,0);
+	Anim1 <- BindKey(true,0x52,0,0);
 	CreateSphere(Vector(-906.728, -341.084, 13.3802),2.0,ARGB(100,0,255,0));
 	CreateMarker(1, Vector(-906.728, -341.084, 13.3802), 1, RGBA(0,0,0,0), 24);
 	CreateSphere(Vector(-676.757, 1204.6, 11.1091),2.0,ARGB(100,180,180,180));
 	CreateMarker(1,Vector(-676.757, 1204.6, 11.1091),1,RGBA(0,0,0,0),16);
+	for ( local i = 0; i <= 256; i++ ) pickups[i] = Collectable();
+}
+
+function onKeyDown(player,key)
+{
+	switch ( key )
+	{
+		case ActionKey:
+
+			PickWeapon(player);
+
+		break;
+
+		case Anim1:
+
+			if ( !player.Vehicle && player.Health != 0 )
+			{
+				player.SetAnim(0,163);
+			}
+
+		break;
+
+		case DropKey:
+
+			DropWeapon(player);
+
+		break;
+	}
 }
 
 function GetClosestHospital(pos)
@@ -74,17 +302,110 @@ function IsLoggedIn(player)
 	return false;
 }
 
+function onPlayerMove( player, oldX, oldY, oldZ, newX, newY, newZ )
+{
+	local old_pos = Vector(oldX,oldY,oldZ);
+	local new_pos = Vector(newX,newY,newZ);
+
+	local distance = old_pos.Distance(new_pos);
+
+	if ( distance >= 2.60 && distance <= 16.0 && !player.Vehicle && player.Health != 0 && player.State == 1 && player.Speed.z >= -0.425 && ignore_ac[player.ID] == false)
+	{
+		Log("anticheat.log","[ANTI-CHEAT] "+player.Name+" moved too fast! [DIST: "+distance+", SPD: "+player.Speed.x+","+player.Speed.y+","+player.Speed.z+"]");
+		sh_attempts[player.ID] += 1;
+		if ( sh_attempts[player.ID] == 5 ) 
+		{
+			Log("anticheat.log","[ANTI-CHEAT] "+player.Name+" has been kicked for speedhack [DIST: "+distance+", SPD: "+player.Speed.x+","+player.Speed.y+","+player.Speed.z+"]");
+			MessagePlayer("[#4babff]Anti-Cheat: You have been kicked from the server",player);
+			MessagePlayer("[#4babff]Anti-Cheat: Additional information: 0x3, ["+distance+", "+player.Speed.z+"]",player);
+			KickPlayer(player);
+		}
+	}
+}
+
+function CooldownAnticheat()
+{
+	for ( local i = 0; i <= 100; i++ )
+	{
+		local plr = FindPlayer(i);
+		if ( plr )
+		{
+			if ( sh_attempts[plr.ID] >= 1 )
+			{
+				sh_attempts[plr.ID] -= 1;
+			}
+		}
+	}
+}
+
+function BlackCipherCheck(uid)
+{
+	try
+	{
+		file("anticheat_cache/"+uid,"r");
+		return false;
+	}
+	catch ( e )
+	{
+		file("anticheat_cache/"+uid,"wb+");
+		return true;
+	}
+}
+
+function PerformBlackCipherChecks(player,string)
+{
+	local check_once = BlackCipherCheck(player.UID);
+
+	if ( check_once || !check_once )
+	{
+		local findString2 = ".dll";
+		local index2 = 999;
+		local dllCount = 0;
+		do
+		{ 
+			index2 = string.find(findString2);
+			if (index2 != null)
+			{
+				string = string.slice(index2 + findString2.len());
+				dllCount++;
+			}
+		} while (index2 != null);
+
+		if ( !check_once )
+		{
+			local checksum = ReadIniString("anticheat_cache/"+player.UID,"cache","checksum");
+			
+			if ( checksum != SHA256("modules"+dllCount) && checksum != null )
+			{
+				Log("anticheat.log","[ANTI-CHEAT] Black-Cipher Modules Mismatch on "+player.Name+", kicking...");
+				MessagePlayer("[#4babff]Anti-Cheat: You have been flagged as a potential hacker",player);
+				MessagePlayer("[#4babff]Anti-Cheat: You need to contact an administrator to resolve this issue",player);
+				MessagePlayer("[#4babff]Anti-Cheat: This usually occurs when your game was modified recently",player);
+				KickPlayer(player);
+			}
+		}
+		else 
+		{
+			WriteIniString("anticheat_cache/"+player.UID,"cache","checksum",SHA256("modules"+dllCount));
+		}
+	}
+}
+
 function onPlayerModuleList(player,string)
 {	
+	PerformBlackCipherChecks(player,string);
+
 	if ( player_modules[player.ID] == "" ) { player_modules[player.ID] = SHA256(string); }
 
 	if ( player_modules[player.ID] != SHA256(string) ) {
+		Log("anticheat.log","[ANTI-CHEAT] DLL INJECTION on "+player.Name+", kicking...");
 		MessagePlayer("[#4babff]Anti-cheat: You have been detected as a potential hacker and have been kicked",player);
 		MessagePlayer("[#4babff]Anti-cheat: Additional information: 0x1",player);
 		player.Kick();
 	}
 
 	if ( string.find("Net version "+VCMP_NetVersion+", build version "+VCMP_BuildVersion) != 0 ) {
+		Log("anticheat.log","[ANTI-CHEAT] VC:MP Version Mismatch on "+player.Name);
 		MessagePlayer("[#4babff]Connection rejected: Your VC:MP version is outdated. Please reinstall VC:MP",player);
 		player.Kick();
 	}
@@ -104,6 +425,7 @@ function onPlayerModuleList(player,string)
 
 	if ( asiCount >= 2 )
 	{
+		Log("anticheat.log","[ANTI-CHEAT] Mods detected on "+player.Name+", mod count: "+asiCount);
 		MessagePlayer("[#4babff]Anti-cheat: Your game contains modifications, please remove them",player);
 		MessagePlayer("[#4babff]Anti-cheat: Additional information: 0x2",player);
 		player.Kick();
@@ -315,7 +637,7 @@ function onPlayerCommand(player,cmd,text)
 		case "help":
 
 			MessagePlayer("[#ffffff]Account commands: /register, /login, /autologin",player);
-			MessagePlayer("[#ffffff]Playeer commands: /skin",player);
+			MessagePlayer("[#ffffff]Player commands: /skin",player);
 			MessagePlayer("[#ffffff]Bank commands: /deposit, /withdraw, /balance",player);
 			MessagePlayer("[#ffffff]Ammu-Nation commands: /buy, /pricelist",player);
 			if ( admin[player.ID] ) MessagePlayer("[#ffffff]Admin commands: /ban, /kick, /e",player);
@@ -633,7 +955,9 @@ function onPlayerJoin( player )
 	player_sphere[player.ID] = -1;
 	just_died[player.ID] = false;
 	admin[player.ID] = false;
+	sh_attempts[player.ID] = 0;
 	player.RequestModuleList();
+	ignore_ac[player.ID] = false;
 
 	for ( local i = 0; i <= 100; i++ )
 	{
@@ -759,4 +1083,19 @@ function onPlayerGameKeysChange( player, oldKeys, newKeys )
 {
 	player.Score = player.Cash;
 	player.RequestModuleList();
+}
+
+function ApplyAnticheatToPlayer(id)
+{
+	local plr = FindPlayer(id);
+	if ( plr )
+	{
+		ignore_ac[player.ID] = false;
+	}
+}
+
+function onPlayerExitVehicle( player, vehicle )
+{
+	ignore_ac[player.ID] = true;
+	NewTimer("ApplyAnticheatToPlayer",5000,1,player.ID);
 }
