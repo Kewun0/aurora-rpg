@@ -22,6 +22,10 @@ class Collectable
 	Pos = null;
 	Value = 0;
 	PickupID = 0;
+
+	Mission = false;
+	MissionID = 0;
+	MissionOwner = null;
 }
 
 function CreateCollectable(model,pos,value)
@@ -61,6 +65,9 @@ function RemoveCollectable(pointer)
 	if ( pointer )
 	{
 		pointer.Model = 0;
+		pointer.Mission = false;
+		pointer.MissionOwner = null;
+		pointer.MissionID = 0;
 		pointer.Value = 0;
 		pointer.PickupID = -1;
 		pointer.Pointer.Remove();
@@ -167,40 +174,37 @@ function onCheckpointExited ( player, sphere )
 
 function onPickupPickedUp(player,pickup)
 {
-	for ( local i = 0; i <= 256; i++ )
+	foreach ( ii, iv in pickups )
 	{
-		local pk = FindCollectable(i);
-		if ( pk ) 
+		if ( iv.PickupID == pickup.ID )
 		{
-			if ( pk.PickupID == pickup.ID )
+			local pk = iv;
+			switch ( pk.Model )
 			{
-				switch ( pk.Model )
-				{
-					case 274:
+				case 274:
 
-						Announce("COLT-45, "+pk.Value+" bullets. Press E to pickup",player,0);
+					Announce("COLT-45, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-					break;
+				break;
 
-					case 279:
+				case 279:
 
-						Announce("STUBBY, "+pk.Value+" bullets. Press E to pickup",player,0);
+					Announce("STUBBY, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-					break;
+				break;
 
-					case 283:
+				case 283:
 
-						Announce("INGRAM, "+pk.Value+" bullets. Press E to pickup",player,0);
+					Announce("INGRAM, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-					break;
+				break;
 
-					case 280:
+				case 280:
 
-						Announce("M4, "+pk.Value+" bullets. Press E to pickup",player,0);
+					Announce("M4, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-					break;
+				break;
 
-				}
 			}
 		}
 	}
@@ -236,7 +240,6 @@ function onScriptLoad()
 	NewTimer("onServerTick",60000,0);
 	NewTimer("CooldownAnticheat",5000,0);
 	SetKillDelay(9999999);
-	SetGamespeed(0.9);
 	SetGravity(0.0085);
 	ActionKey <- BindKey(true,0x45,0,0);
 	DropKey <- BindKey(true,0x47,0,0);
@@ -293,7 +296,7 @@ function IsRegistered(player)
 
 function randfloat()
 {
-    return (rand()+"."+rand()).tofloat();
+	return (rand()+"."+rand()).tofloat();
 }
 
 function IsLoggedIn(player)
@@ -309,7 +312,7 @@ function onPlayerMove( player, oldX, oldY, oldZ, newX, newY, newZ )
 
 	local distance = old_pos.Distance(new_pos);
 
-	if ( distance >= 2.60 && distance <= 16.0 && !player.Vehicle && player.Health != 0 && player.State == 1 && player.Speed.z >= -0.425 && ignore_ac[player.ID] == false)
+	if ( distance >= 2.60 && distance <= 16.0 && !player.Vehicle && player.Health != 0 && player.State == 1 && player.Speed.z >= -0.425 && ignore_ac[player.ID] == false && !player.StandingOnVehicle)
 	{
 		Log("anticheat.log","[ANTI-CHEAT] "+player.Name+" moved too fast! [DIST: "+distance+", SPD: "+player.Speed.x+","+player.Speed.y+","+player.Speed.z+"]");
 		sh_attempts[player.ID] += 1;
@@ -560,8 +563,8 @@ function GetTok( string, separator, n, ... )
 
 function NumTok(string, separator)
 {
-    local tokenized = split(string, separator);
-    return tokenized.len();
+	local tokenized = split(string, separator);
+	return tokenized.len();
 }
 
 function GetPlayer( target )
@@ -936,7 +939,7 @@ function onPlayerCommand(player,cmd,text)
 				}
 				else MessagePlayer("[#ff0000]You are already logged in",player);
 			}
-			else MessagePlayer("[#ff0000]Register your account: /register [password]",player);
+			else MessagePlayer("[#ff0000]Login to your account: /login [password]",player);
 
 		break;
 
