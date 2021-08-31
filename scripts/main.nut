@@ -15,6 +15,33 @@ sh_attempts <- array(128,null);
 pickups <- array(257, null);
 ignore_ac <- array(128,null);
 
+local hints =
+[
+	"You can launch a mission when you get in trashmaster",
+	"You can buy some weapons in ammu-nation",
+	"You can use the bank services to deposit or withdraw your money",
+	"You can write /help to get some information about server commands"
+];
+
+local trash_pos =
+[
+	[-755.672, 1206.05, 11.0712],
+	[-462.587, 1075.9, 11.0712],
+	[-637.744, 624.981, 11.0712],
+	[-812.071, 461.142, 10.931],
+	[-973.64, 310.879, 11.263],
+	[-1045.7, 70.5216, 11.333],
+	[-973.104, -159.049, 10.768],
+	[-840.538, -877.281, 11.1036],
+	[-898.687, -1237.05, 11.7162],
+	[-873.007, -638.356, 11.2776],
+	[-1070.98, -183.19, 11.4464],
+	[-1141.36, -278.86, 11.2794],
+	[-1180.4, -92.3097, 11.4464],
+	[-888.841, -144.7, 11.1035],
+	[-903.42, 114.462, 9.37293]
+];
+
 class Collectable
 {
 	Pointer = null;
@@ -1077,11 +1104,6 @@ function onPlayerChat( player, text )
 	return 0;
 }
 
-function onPlayerCrashDump( player, crash )
-{
-	player.RequestModuleList();
-}
-
 function onPlayerGameKeysChange( player, oldKeys, newKeys )
 {
 	player.Score = player.Cash;
@@ -1101,4 +1123,15 @@ function onPlayerExitVehicle( player, vehicle )
 {
 	ignore_ac[player.ID] = true;
 	NewTimer("ApplyAnticheatToPlayer",5000,1,player.ID);
+}
+
+function onPlayerEnterVehicle( player, vehicle, door )
+{
+	if ( door == 0 )
+	{
+		if ( vehicle.Model == 138 )
+		{
+			
+		}
+	}
 }
