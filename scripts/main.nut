@@ -1115,7 +1115,7 @@ function ApplyAnticheatToPlayer(id)
 	local plr = FindPlayer(id);
 	if ( plr )
 	{
-		ignore_ac[player.ID] = false;
+		ignore_ac[plr.ID] = false;
 	}
 }
 
