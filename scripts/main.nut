@@ -5,42 +5,23 @@ local VCMP_Size = "4D2000";
 local Hospital1 = Vector(-884.684, -468.926, 13.1104);
 local Hospital2 = Vector(491.995, 701.103, 12.1033);
 
-player_modules <- array(100,null);
 logged <- array(128,null);
 just_died <- array(128,null);
 last_death_pos <- array(128,null);
-player_sphere <- array(128,null);
 admin <- array(128,null);
 sh_attempts <- array(128,null);
 pickups <- array(257, null);
 ignore_ac <- array(128,null);
 
-local hints =
-[
-	"You can launch a mission when you get in trashmaster",
-	"You can buy some weapons in ammu-nation",
-	"You can use the bank services to deposit or withdraw your money",
-	"You can write /help to get some information about server commands"
-];
+player_mission <- array(100,null);
+player_modules <- array(100,null);
+player_sphere <- array(128,null);
+player_mission_timer <- array(100,0);
+player_awaiting_mission <- array(100,0);
 
-local trash_pos =
-[
-	[-755.672, 1206.05, 11.0712],
-	[-462.587, 1075.9, 11.0712],
-	[-637.744, 624.981, 11.0712],
-	[-812.071, 461.142, 10.931],
-	[-973.64, 310.879, 11.263],
-	[-1045.7, 70.5216, 11.333],
-	[-973.104, -159.049, 10.768],
-	[-840.538, -877.281, 11.1036],
-	[-898.687, -1237.05, 11.7162],
-	[-873.007, -638.356, 11.2776],
-	[-1070.98, -183.19, 11.4464],
-	[-1141.36, -278.86, 11.2794],
-	[-1180.4, -92.3097, 11.4464],
-	[-888.841, -144.7, 11.1035],
-	[-903.42, 114.462, 9.37293]
-];
+players <- {};
+
+trash_pos <- array(15,null);
 
 class Collectable
 {
@@ -53,7 +34,30 @@ class Collectable
 	Mission = false;
 	MissionID = 0;
 	MissionOwner = null;
+	MissionOwnerID = -1;
+	MissionBlip = null;
 }
+
+function LoadMissionStuff()
+{
+	trash_pos[0] = Vector(-755.672, 1206.05, 11.0712);
+	trash_pos[1] = Vector(-462.587, 1075.9, 11.0712);
+	trash_pos[2] = Vector(-637.744, 624.981, 11.0712);
+	trash_pos[3] = Vector(-812.071, 461.142, 10.931);
+	trash_pos[4] = Vector(-973.64, 310.879, 11.263);
+	trash_pos[5] = Vector(-1045.7, 70.5216, 11.333);
+	trash_pos[6] = Vector(-973.104, -159.049, 10.768);
+	trash_pos[7] = Vector(-840.538, -877.281, 11.1036);
+	trash_pos[8] = Vector(-898.687, -1237.05, 11.7162);
+	trash_pos[9] = Vector(-873.007, -638.356, 11.2776);
+	trash_pos[10] =Vector(-1070.98, -183.19, 11.4464);
+	trash_pos[11] =Vector(-1141.36, -278.86, 11.2794);
+	trash_pos[12] =Vector(-1180.4, -92.3097, 11.4464);
+	trash_pos[13] =Vector(-888.841, -144.7, 11.1035);
+	trash_pos[14] =Vector(-903.42, 114.462, 9.37293);
+}
+
+LoadMissionStuff();
 
 function CreateCollectable(model,pos,value)
 {
@@ -71,11 +75,13 @@ function CreateCollectable(model,pos,value)
 			}
 		}
 	}
-	pickups[valid_index].Pointer = CreatePickup(model,pos);
+	local pkkk = CreatePickup(model,pos);
+	pickups[valid_index].Pointer = pkkk;
 	pickups[valid_index].Value = value;
 	pickups[valid_index].Model = model;
 	pickups[valid_index].Pos = pos;
-	pickups[valid_index].PickupID = pickups[valid_index].Pointer.ID;
+	pickups[valid_index].PickupID = pkkk.ID;
+	return pickups[valid_index];
 }
 
 function FindCollectable(id)
@@ -94,11 +100,21 @@ function RemoveCollectable(pointer)
 		pointer.Model = 0;
 		pointer.Mission = false;
 		pointer.MissionOwner = null;
+		pointer.MissionOwnerID = -1;
 		pointer.MissionID = 0;
 		pointer.Value = 0;
 		pointer.PickupID = -1;
-		pointer.Pointer.Remove();
-		pointer.Pointer = null;
+		if ( pointer.MissionBlip )
+		{
+			DestroyMarker(pointer.MissionBlip);
+			pointer.MissionBlip = null;	
+		}
+
+		if ( pointer.Pointer )
+		{
+			pointer.Pointer.Remove();
+			pointer.Pointer = null;
+		}
 	}
 }
 
@@ -201,38 +217,107 @@ function onCheckpointExited ( player, sphere )
 
 function onPickupPickedUp(player,pickup)
 {
-	foreach ( ii, iv in pickups )
+	if ( !player.Vehicle )
 	{
-		if ( iv.PickupID == pickup.ID )
+		foreach ( ii, iv in pickups )
 		{
-			local pk = iv;
-			switch ( pk.Model )
+			if ( iv.PickupID == pickup.ID )
 			{
-				case 274:
+				local pk = iv;
+				switch ( pk.Model )
+				{
+					case 274:
 
-					Announce("COLT-45, "+pk.Value+" bullets. Press E to pickup",player,0);
+						Announce("COLT-45, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-				break;
+					break;
 
-				case 279:
+					case 279:
 
-					Announce("STUBBY, "+pk.Value+" bullets. Press E to pickup",player,0);
+						Announce("STUBBY, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-				break;
+					break;
 
-				case 283:
+					case 283:
 
-					Announce("INGRAM, "+pk.Value+" bullets. Press E to pickup",player,0);
+						Announce("INGRAM, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-				break;
+					break;
 
-				case 280:
+					case 280:
 
-					Announce("M4, "+pk.Value+" bullets. Press E to pickup",player,0);
+						Announce("M4, "+pk.Value+" bullets. Press E to pickup",player,0);
 
-				break;
+					break;
 
+				}
 			}
+		}
+	}
+	else
+	{
+		switch ( player.Vehicle.Model )
+		{
+			case 138:
+
+				if ( pickup.Model == 399 )
+				{
+					if ( player_mission[player.ID] == 1 )
+					{
+						onCollectTrash(player,pickup);
+					}
+				}	
+
+			break;
+		}
+	}
+}
+
+function onCollectTrash(player,pickup)
+{
+	player_mission_timer[player.ID] = 4;
+	local payout = 100 + rand()%251;
+	Announce("}"+payout,player,7);
+	player.Cash += payout;
+	foreach( bag in pickups )
+	{
+		if ( pickup.ID == bag.PickupID )
+		{
+			RemoveCollectable(bag);
+		}
+	}
+}
+
+function CreateTrashForPlayer(player)
+{
+	if ( player_mission[player.ID] == 1 )
+	{
+		local outpos = trash_pos[rand()%15];
+		local temp_bag = CreateCollectable(399,outpos,0);
+		temp_bag.MissionOwner = player;
+		temp_bag.MissionOwnerID = player.ID;
+		temp_bag.MissionBlip = CreateMarker(player.UniqueWorld, outpos, 3, RGBA(125,125,0,255), 0);
+	}
+}
+
+function onServerRender()
+{
+	foreach( plr in players )
+	{
+		if ( player_mission[plr.ID] == 1 )
+		{
+			
+			if ( player_mission_timer[plr.ID] >= 1 )
+			{
+				player_mission_timer[plr.ID] -= 1;
+			}
+			if ( player_mission_timer[plr.ID] == 0 )
+			{
+				player_mission_timer[plr.ID] -= 1;
+				CreateTrashForPlayer(plr);
+				MessagePlayer("[#ffff00]Collect the trash bag from yellow marker on radar",plr);
+			}
+					
 		}
 	}
 }
@@ -266,6 +351,7 @@ function onScriptLoad()
 {
 	NewTimer("onServerTick",60000,0);
 	NewTimer("CooldownAnticheat",5000,0);
+	NewTimer("onServerRender",1000,0);
 	SetKillDelay(9999999);
 	SetGravity(0.0085);
 	ActionKey <- BindKey(true,0x45,0,0);
@@ -343,7 +429,7 @@ function onPlayerMove( player, oldX, oldY, oldZ, newX, newY, newZ )
 	{
 		Log("anticheat.log","[ANTI-CHEAT] "+player.Name+" moved too fast! [DIST: "+distance+", SPD: "+player.Speed.x+","+player.Speed.y+","+player.Speed.z+"]");
 		sh_attempts[player.ID] += 1;
-		if ( sh_attempts[player.ID] == 5 ) 
+		if ( sh_attempts[player.ID] == 5 && !admin[player.ID] ) 
 		{
 			Log("anticheat.log","[ANTI-CHEAT] "+player.Name+" has been kicked for speedhack [DIST: "+distance+", SPD: "+player.Speed.x+","+player.Speed.y+","+player.Speed.z+"]");
 			MessagePlayer("[#4babff]Anti-Cheat: You have been kicked from the server",player);
@@ -355,15 +441,11 @@ function onPlayerMove( player, oldX, oldY, oldZ, newX, newY, newZ )
 
 function CooldownAnticheat()
 {
-	for ( local i = 0; i <= 100; i++ )
+	foreach( plr in players )
 	{
-		local plr = FindPlayer(i);
-		if ( plr )
+		if ( sh_attempts[plr.ID] >= 1 )
 		{
-			if ( sh_attempts[plr.ID] >= 1 )
-			{
-				sh_attempts[plr.ID] -= 1;
-			}
+			sh_attempts[plr.ID] -= 1;
 		}
 	}
 }
@@ -980,25 +1062,32 @@ function onPlayerCommand(player,cmd,text)
 
 function onPlayerJoin( player )
 {
+	foreach( bag in pickups )
+	{
+		if ( bag.MissionOwnerID == player.ID )
+		{
+			RemoveCollectable(bag);
+		}
+	}
+	
+	players.rawset(player.Name,player);
 	CheckPlayer(player);
 	player_modules[player.ID] = "";
 	player_sphere[player.ID] = -1;
+	player_mission[player.ID] = 0;
+
 	just_died[player.ID] = false;
 	admin[player.ID] = false;
 	sh_attempts[player.ID] = 0;
 	player.RequestModuleList();
 	ignore_ac[player.ID] = false;
 
-	for ( local i = 0; i <= 100; i++ )
+	foreach (plr in players)
 	{
-		local plr = FindPlayer(i);
-		if ( plr )
+		if ( plr.ID != player.ID && ( plr.UID == player.UID || plr.UID2 == player.UID2 ) )
 		{
-			if ( plr.ID != player.ID && ( plr.UID == player.UID || plr.UID2 == player.UID2 ) )
-			{
-				MessagePlayer("[#4babff]Connection rejected: You are already connected to this server from another game instance.",player);
-				KickPlayer(player);
-			}
+			MessagePlayer("[#4babff]Connection rejected: You are already connected to this server from another game instance.",player);
+			KickPlayer(player);
 		}
 	} 
 }
@@ -1011,6 +1100,7 @@ function onPlayerDeath( player, reason )
 
 function onPlayerPart( player, reason )
 {
+	players.rawdelete(player.Name);
 	SaveAccount(player);
 	logged[player.ID] = false;
 }
@@ -1030,6 +1120,15 @@ function onPlayerSpawn( player )
 {
 	player.Team = player.ID;
 	player.Colour = RGB( rand() % 256, rand() % 256, rand() % 256 );
+	player_mission[player.ID] = 0;
+
+	foreach( bag in pickups )
+	{
+		if ( bag.MissionOwnerID == player.ID )
+		{
+			RemoveCollectable(bag);
+		}
+	}
 
 	if ( !logged[player.ID] )
 	{
@@ -1085,6 +1184,7 @@ function onPlayerSpawn( player )
 
 function onPlayerKill( killer , player, reason, bodypart )
 {
+	player_mission[player.ID] = 0;
 	killer.WantedLevel += 1; 
 	just_died[player.ID] = true;
 	last_death_pos[player.ID] = player.Pos;
@@ -1121,6 +1221,18 @@ function ApplyAnticheatToPlayer(id)
 
 function onPlayerExitVehicle( player, vehicle )
 {
+	foreach( bag in pickups )
+	{
+		if ( bag.MissionOwnerID == player.ID )
+		{
+			RemoveCollectable(bag);
+		}
+	}
+	if ( vehicle.Model == 138 )
+	{
+		Announce("Mission Over",player,7);
+	}
+	player_mission[player.ID] = 0;
 	ignore_ac[player.ID] = true;
 	NewTimer("ApplyAnticheatToPlayer",5000,1,player.ID);
 }
@@ -1131,7 +1243,9 @@ function onPlayerEnterVehicle( player, vehicle, door )
 	{
 		if ( vehicle.Model == 138 )
 		{
-			
+			Announce("Trashmaster",player,7);
+			player_mission[player.ID] = 1;
+			player_mission_timer[player.ID] = 3;
 		}
 	}
 }
